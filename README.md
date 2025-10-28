@@ -126,11 +126,11 @@ If Proxmox itself is running and `/mnt/pve/backup/dump` contains `.vma.zst` or `
 
 ### ▶️ Restore a VM
 
-`qmrestore /mnt/pve/backup/dump/vm-100-<DATE>.vma.zst <NEW_VM_ID> --storage local-lvm`
+`qmrestore /mnt/pve/backup/dump/vm-100-<DATE>.vma.zst 100 --storage sata_1tb`
 
 ### ▶️ Restore an LXC Container
 
-`pct restore <NEW_CT_ID> /mnt/pve/backup/dump/vzdump-lxc-<ID>-<DATE>.tar.zst --storage local-lvm`
+`pct restore <NEW_CT_ID> /mnt/pve/backup/dump/vzdump-lxc-<ID>-<DATE>.tar.zst --storage sata_1tb`
 
 After restoration, adjust resources or mounts if needed in the Proxmox web UI.
 
@@ -143,11 +143,11 @@ If your Duplicati Docker container is running inside your VM:
 
 1.  Locate your exported Duplicati configuration file:
 
-    `/mnt/pve/backup/duplicati_config/duplicati-config-export.zip`
+    `/mnt/pve/backup/duplicati_config/Docker Volume Backup-duplicati-config.json`
 
 2.  Open Duplicati Web UI → top-right menu → **Settings → Import Configuration**
 
-3.  Choose the `.zip` file above and import.
+3.  Choose the `.json` file above and import.
 
 4.  Verify your backup jobs and storage paths (should point to `/mnt/usb_backup` inside container).
 
@@ -168,12 +168,14 @@ Duplicati backs up your Docker bind-mounted volumes under:
 
 2.  Click **Restore** → **From backup location**.
 
-3.  Choose the destination path that corresponds to your Docker bind mount (e.g. `/mnt/host/Actual_budget`).
+3.  Choose the destination path that corresponds to your Docker bind mount (e.g. `/mnt/host/docker_volumes/Actual_budget`).
 
 4.  Select the backup set and restore version you want.
 
 5.  Restore to the **same location** to overwrite the old data.
 
+6. Restore Docker Compose, Docker Volume, and Immich Docker Volume.
+   
 After restore:
 
 `docker compose down
