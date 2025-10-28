@@ -1,131 +1,233 @@
-🛠 Homelab Backup & Recovery Documentation
-==========================================
+# 🧭 Full Proxmox Backup & Recovery Documentation
 
-**Purpose:** Restore the full environment (Proxmox host, VMs, LXCs, and important data) to a new machine or after a hardware failure.
+This document explains how to rebuild your Proxmox environment exactly as before in the event of SSD or system failure.  
+It covers your hardware layout, mounting structure, Proxmox config restoration, and Docker/Duplicati data recovery.
+
+---
+
+## ⚙️ 1. System Overview
+
+### 🖥️ Hardware Layout
+- **Boot Drive (NVMe 256GB)**  
+  - Proxmox OS installed here  
+  - Handles system files and LXC/VM configuration  
+  - Mounted automatically as `/`
+
+- **SSD Storage Drive (1TB, ZFS pool named `sata_1tb`)**  
+  - Houses all Docker volumes, LXC root disks, and shared data  
+  - Mounted as `/sata_1tb`
+  - Subvolumes include:
+    ```
+    /sata_1tb/nfs_share
+    /sata_1tb/subvol-101-disk-0
+    /sata_1tb/subvol-104-disk-0
+    /sata_1tb/subvol-108-disk-0
+    ```
+
+- **USB Backup Drive**  
+  - Mounted automatically by Proxmox as `/mnt/pve/backup`
+  - Stores:
+    ```
+    /mnt/pve/backup/dump/                  → Proxmox VM & LXC backups
+    /mnt/pve/backup/proxmox_config_backups → Proxmox config tarballs
+    /mnt/pve/backup/duplicati_backups/     → Docker volume backups
+    /mnt/pve/backup/duplicati_config/      → Duplicati configuration export
+    /mnt/pve/backup/scripts/               → Backup & restore scripts
+    ```
+
+---
+
+## 💽 2. Mounting the Drives After Fresh Install
+
+After reinstalling Proxmox on a new NVMe drive:
+
+### 🔹 Check available disks
+```bash
+lsblk
+zpool list
+zfs list
+```
+### 🔹 Import and mount the ZFS pool
+
+If `sata_1tb` does not appear:
+
+`zpool import
+zpool import sata_1tb`
+
+Then verify mount points:
+
+`zfs list`
+
+If needed, manually mount it:
+
+`zfs mount sata_1tb`
+
+It should now appear under `/sata_1tb`.
+
+### 🔹 Mount the USB backup drive
+
+Proxmox automounts `/mnt/pve/backup`, but if it does not:
+
+`mount /dev/sdb1 /mnt/pve/backup`
+
+(Replace `/dev/sdb1` with the correct device if different.)
 
 * * * * *
 
-1️⃣ Hardware & Storage Layout
------------------------------
+🧩 3. Restore Proxmox Configurations
+------------------------------------
 
-| Drive | Mount Point | Purpose |
+### 📍 Script Locations
+
+-   Backup script: `/mnt/pve/backup/scripts/backup_proxmox_full_config.sh`
+
+-   Restore script: `/mnt/pve/backup/scripts/recover_proxmox_config.sh`
+
+### ▶️ To back up (run from host):
+
+`sudo /mnt/pve/backup/scripts/backup_proxmox_full_config.sh`
+
+This creates a timestamped archive in:
+
+`/mnt/pve/backup/proxmox_config_backups/proxmox_config_backup_<DATE>.tar.gz`
+
+### ▶️ To restore (on new system):
+
+`sudo /mnt/pve/backup/scripts/recover_proxmox_config.sh`
+
+Then:
+
+1.  Choose the backup file (e.g., `proxmox_config_backup_2025-10-27_14-00-23.tar.gz`)
+
+2.  Confirm with `YES`
+
+3.  Script automatically:
+
+    -   Creates a safety backup of current `/etc/pve`
+
+    -   Restores `/etc/pve`, `/etc/network`, `/etc/fstab`, `/usr/local/bin`, etc.
+
+4.  Reboot after restore:
+
+    `reboot`
+
+### ✅ Verify after reboot
+
+`cat /etc/fstab
+cat /etc/network/interfaces
+pct list && qm list`
+
+* * * * *
+
+🗄️ 4. Recover Proxmox VM & LXC Backups
+---------------------------------------
+
+If Proxmox itself is running and `/mnt/pve/backup/dump` contains `.vma.zst` or `.tar.zst` files:
+
+### ▶️ Restore a VM
+
+`qmrestore /mnt/pve/backup/dump/vm-100-<DATE>.vma.zst <NEW_VM_ID> --storage local-lvm`
+
+### ▶️ Restore an LXC Container
+
+`pct restore <NEW_CT_ID> /mnt/pve/backup/dump/vzdump-lxc-<ID>-<DATE>.tar.zst --storage local-lvm`
+
+After restoration, adjust resources or mounts if needed in the Proxmox web UI.
+
+* * * * *
+
+☁️ 5. Restore Duplicati Configuration
+-------------------------------------
+
+If your Duplicati Docker container is running inside your VM:
+
+1.  Locate your exported Duplicati configuration file:
+
+    `/mnt/pve/backup/duplicati_config/duplicati-config-export.zip`
+
+2.  Open Duplicati Web UI → top-right menu → **Settings → Import Configuration**
+
+3.  Choose the `.zip` file above and import.
+
+4.  Verify your backup jobs and storage paths (should point to `/mnt/usb_backup` inside container).
+
+* * * * *
+
+🐳 6. Restore Docker Volumes via Duplicati
+------------------------------------------
+
+### 🗂️ Backup Location
+
+Duplicati backs up your Docker bind-mounted volumes under:
+
+`/mnt/pve/backup/duplicati_backups/`
+
+### ▶️ To restore:
+
+1.  Open Duplicati Web UI inside the VM.
+
+2.  Click **Restore** → **From backup location**.
+
+3.  Choose the destination path that corresponds to your Docker bind mount (e.g. `/mnt/host/Actual_budget`).
+
+4.  Select the backup set and restore version you want.
+
+5.  Restore to the **same location** to overwrite the old data.
+
+After restore:
+
+`docker compose down
+docker compose up -d`
+
+Your containers will start using the restored volumes.
+
+* * * * *
+
+🧱 7. Verification Steps After Full Recovery
+--------------------------------------------
+
+Run these checks in order:
+
+1.  **Check all drives are mounted**
+
+    `df -h
+    zpool status`
+
+2.  **List all Proxmox entities**
+
+    `pct list
+    qm list`
+
+3.  **Confirm Docker volumes exist in VM**
+
+    `docker volume ls
+    ls /mnt/host`
+
+4.  **Open Duplicati Web UI**\
+    Verify your backup jobs and restore points.
+
+* * * * *
+
+🧰 8. Summary of What's Protected
+---------------------------------
+
+| Category | Backup Method | Location |
 | --- | --- | --- |
-| NVMe 256 GB | `/` | Proxmox OS |
-| SSD 1 TB (`sata_1tb`) | `/sata_1tb` | Storage for LXC root disks and shared docker volumes |
-| External USB | `/mnt/pve/backup` | Proxmox vzdump backup destination |
+| Proxmox VMs & LXCs | Built-in Proxmox backups | `/mnt/pve/backup/dump/` |
+| Proxmox Configs | Custom backup script | `/mnt/pve/backup/proxmox_config_backups/` |
+| Duplicati Configuration | Exported via UI | `/mnt/pve/backup/duplicati_config/` |
+| Docker Volumes | Duplicati inside VM | `/mnt/pve/backup/duplicati_backups/` |
+| Custom Scripts | Stored manually | `/mnt/pve/backup/scripts/` |
 
 * * * * *
 
-2️⃣ Mounting & Bind Mounts
---------------------------
+🧠 Notes
+--------
 
-### Host
+-   The USB backup drive (`/mnt/pve/backup`) is your **single source of truth**.
 
--   `sata_1tb` is a ZFS pool mounted at `/sata_1tb`
+-   All backups are **timestamped** so you can restore from multiple points in time.
 
--   `nfs_share` folder inside `sata_1tb` contains data shared with Docker containers
+-   The ZFS SSD (`sata_1tb`) can fail independently --- you'll still retain all configs and data via these backups.
 
--   External USB is mounted at `/mnt/pve/backup` for backups
-
-3️⃣ Backup Strategy
--------------------
-
-### 3.1 Proxmox Backup (VMs & LXCs)
-
--   Tool: Proxmox **vzdump** (or Proxmox Backup Server if desired in future)
-
--   Scope:
-
-    -   Entire VM and LXC root disks (including those stored on `sata_1tb`)
-
-    -   LXC configuration files (`/etc/pve/lxc/<id>.conf`)
-
--   Destination: `/mnt/pve/backup` (USB drive)
-
--   Schedule: Weekly (or as preferred)
-
--   Notes:
-
-    -   All container apps and configs are included
-
-    -   Root disks on `sata_1tb` are fully captured
-
-### 3.2 Duplicati Backup (Shared Data)
-
--   Tool: **Duplicati Docker container** running inside VM 101
-
--   Source: `/mnt/sata_1tb/nfs_share`
-
--   Destination: `/mnt/usb_backup/duplicati_backups/sata_1tb`
-
--   Purpose: Backup all shared Docker volumes for all other containers
-
--   Container: **Privileged** (to ensure read access)
-
--   Schedule: Weekly
-
--   Notes:
-
-    -   Only backs up `nfs_share` --- no need to back up other LXC root disks (already in vzdump)
-
-* * * * *
-
-4️⃣ Restore Workflow
---------------------
-
-### Scenario: Full host failure
-
-1.  **Install new Proxmox host** on new NVMe drive.
-
-2.  **Attach SSD (`sata_1tb`)** and USB backup. Ensure they mount properly (`/sata_1tb` and `/mnt/pve/backup`).
-
-3.  **Restore VMs & LXCs** from Proxmox backup:
-
-    `vzdump --restore /mnt/pve/backup/vzdump-lxc-101.vma.zst 101`
-
-    -   This restores LXC root filesystem, config, and apps
-
-    -   LXCs with root disks on `sata_1tb` are fully restored
-
-4.  **Restore shared Docker data** using Duplicati:
-
-    -   Start Duplicati VM (101)
-
-    -   Navigate to `/mnt/usb_backup/duplicati_backups/sata_1tb`
-
-    -   Run restore to `/mnt/sata_1tb/nfs_share`
-
-5.  **Start Docker containers** inside the VM --- they will automatically use `/mnt/sata_1tb/nfs_share` for volumes.
-
-### Notes
-
--   After restore, all Docker containers, VMs, and LXC configurations will be **exactly as before**.
-
--   If new containers are added in future, just ensure their persistent volumes live in `nfs_share` or other mount points backed by Duplicati.
-
-* * * * *
-
-5️⃣ Verification After Restore
-------------------------------
-
-1.  Check disk mounts:
-
-    `mount | grep sata_1tb`
-
-2.  Check container bind mounts:
-
-    `pct exec <container_id> -- ls -l /mnt/sata_1tb/nfs_share`
-
-3.  Verify Duplicati backups exist and are restorable.
-
-4.  Start Docker containers and confirm volumes are intact.
-
-* * * * *
-
-✅ This strategy ensures:
-
--   LXC/VM OS and configs are safe in Proxmox backups
-
--   All shared Docker volumes (`nfs_share`) are backed up via Duplicati
-
--   No redundancy or double-backups for root disks
+-   Always test restore workflows once every few months to ensure data integrity.
