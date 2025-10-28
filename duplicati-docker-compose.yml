@@ -1,0 +1,22 @@
+### Move this to /mnt/host/docker-compose/duplicati/docker-compose.yml
+### Create .env file with 
+### DUPLICATI__WEBSERVICE_PASSWORD=
+---
+services:
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    container_name: duplicati
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=America/Chicago
+      - SETTINGS_ENCRYPTION_KEY=Wif!0q43OBVdFGBxWpI%
+      #- CLI_ARGS= #optional
+      - DUPLICATI__WEBSERVICE_PASSWORD=${DUPLICATI__WEBSERVICE_PASSWORD}
+    volumes:
+      - /mnt/host/Duplicati/config:/config
+      - /mnt/usb-drive/duplicati_backups:/backups
+      #- /var/lib/docker/volumes/:/source/volumes:ro
+      - /mnt/host:/source/host
+    ports:
+      - 8200:8200
