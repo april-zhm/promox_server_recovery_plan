@@ -27,21 +27,6 @@
 
 -   External USB is mounted at `/mnt/pve/backup` for backups
 
-### LXCs
-
--   Each LXC may have its root disk on `sata_1tb` or default storage
-
--   Bind mounts for shared data (Docker volumes, etc.):
-
-| Container ID | Host Path | Container Path | Notes |
-| --- | --- | --- | --- |
-| 101 (Duplicati VM) | `/sata_1tb/nfs_share` | `/mnt/sata_1tb/nfs_share` | Privileged container, read/write access to all data inside `nfs_share` |
-| 101 (Duplicati VM) | `/mnt/pve/backup` | `/mnt/usb_backup` | Destination for backup files |
-
-> All Docker containers inside the VM use `/mnt/sata_1tb/nfs_share` as bind mount for persistent volumes.
-
-* * * * *
-
 3️⃣ Backup Strategy
 -------------------
 
