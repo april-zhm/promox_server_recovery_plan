@@ -27,9 +27,11 @@ This section explains what happens if each fails and how to prepare.
 
 Use `smartctl` to check each drive:
 
-`smartctl -a /dev/nvme0n1     # For NVMe boot drive
+```
+smartctl -a /dev/nvme0n1     # For NVMe boot drive
 smartctl -a /dev/sda         # For SATA SSD
-smartctl -a /dev/sdb         # For USB backup drive`
+smartctl -a /dev/sdb         # For USB backup drive
+```
 
 Look for:
 
