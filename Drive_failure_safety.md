@@ -43,6 +43,21 @@ Look for:
 
 Run this monthly and before long backup sessions.
 
+⚠️ Key Attributes to Watch
+--------------------------
+
+| SMART Attribute | What It Means | Healthy Value | Warning Signs |
+| --- | --- | --- | --- |
+| **Reallocated_Sector_Ct** | Number of bad sectors remapped to spare area. | 0 | >0 means drive found physical damage. Increasing = dying disk. |
+| **Current_Pending_Sector** | Sectors waiting for reallocation (unreadable for now). | 0 | Any non-zero = unstable media. If it increases → imminent failure. |
+| **Offline_Uncorrectable** | Sectors that can't be fixed even after re-read. | 0 | >0 = data already lost in some spots. |
+| **Reallocated_Event_Count** | Number of remap operations performed. | 0 | Rising count = spreading damage. |
+| **Power_On_Hours** | How long the drive's been running. | N/A | >30,000 h (~3 yrs) = aging, watch closely. |
+| **Temperature_Celsius** | Drive temp. | 25--45 °C (SSD), 30--50 °C (HDD) | >55 °C shortens lifespan; >60 °C dangerous. |
+| **Power_Cycle_Count** | Number of power-ons. | N/A | Only concerning if extremely high (tens of thousands). |
+| **Wear_Leveling_Count / Percentage_Used** (SSDs only) | Flash wear indicator. | 0--10% used | >80% = SSD nearing end of life. |
+| **CRC_Error_Count** | Communication errors (bad SATA cable, power, or port). | 0 | Non-zero and rising = check cabling. |
+
 * * * * *
 
 ### 🧯 3. Failure Scenarios & Recovery Steps
