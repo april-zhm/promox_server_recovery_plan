@@ -46,7 +46,7 @@ Run this monthly and before long backup sessions.
 ⚠️ Key Attributes to Watch
 --------------------------
 
-| ID  SMART Attribute | What It Means | Healthy Value | Warning Signs |
+| ID | SMART Attribute | What It Means | Healthy Value | Warning Signs |
 | --- | --- | --- | --- | --- |
 | 5 | **Reallocated_Sector_Ct** | Number of bad sectors remapped to spare area. | 0 | >0 means drive found physical damage. Increasing = dying disk. |
 | 9 | **Power_On_Hours** | How long the drive's been running. | N/A | >30,000 h (~3 yrs) = aging, watch closely. |
