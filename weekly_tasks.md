@@ -103,15 +103,21 @@ cat /var/log/smartd_warnings.log
 
 1.  Ensure no terminal or process is in `/mnt/pve/backup`:
 
-`cd ~`
+```
+cd ~
+```
 
 1.  Unmount safely:
 
-`umount /mnt/pve/backup`
+```
+umount /mnt/pve/backup
+```
 
 -   If busy, use lazy unmount:
 
-`umount -l /mnt/pve/backup`
+```
+umount -l /mnt/pve/backup
+```
 
 * * * * *
 
