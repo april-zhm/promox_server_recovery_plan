@@ -59,7 +59,7 @@ df -h | grep backup
 **Script:**
 
 ```
-/mnt/pve/backup/backup_proxmox_full_config.sh
+/mnt/pve/backup/scripts/backup_proxmox_full_config.sh
 ```
 
 **Run manually each week.**
